@@ -7,52 +7,12 @@ import authenticate from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-router.get("/profile", authenticate, async (req, res) => {
-  try {
-    const result = await pool.query(
-      "SELECT id, username, email FROM users WHERE id = $1",
-      [req.user!.userId]
-    );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    return res.json({ user: result.rows[0] });
-
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      message: "Internal server error",
-    });
-  }
-});
-
-router.get("/me", async (req, res) => {
-    const token = req.cookies?.token;
-    const secret = process.env.JWT_SECRET;
-    
-    if (!token || !secret) {
-        return res.status(401).json({
-            message: "Not Signed In",
-        });
-    }
-
+router.get("/me", authenticate, async (req, res) => {
     try {
-        const decoded = jwt.verify(token, secret);
-
-        if (typeof decoded === "string" || !decoded.userId) {
-            return res.status(401).json({
-                message: "Invalid Session",
-            });
-        }
-
         const result = await pool.query(
             "SELECT id, username, email FROM users WHERE id = $1",
-            [decoded.userId],
+            [req.user!.userId]
         );
 
         const user = result.rows[0];
@@ -63,14 +23,17 @@ router.get("/me", async (req, res) => {
             });
         }
 
-        return res.json({ user });
+        return res.status(200).json({ user });
 
-    } catch {
-        return res.status(401).json({ message: "Invalid session" });
+    } catch (error) {
+        console.error("Error fetching current user:", error);
+
+        return res.status(500).json({
+            message: "Internal server error",
+        });
     }
-
-
 });
+
 
 router.post("/logout", (_req, res) => {
     res.clearCookie("token", {

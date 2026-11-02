@@ -1,5 +1,6 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import AuthPage from './pages/AuthPage'
 import {
   Activity,
   ArrowDownRight,
@@ -94,8 +95,14 @@ const repositories = [
 ]
 
 type Tab = 'Overview' | 'Discover' | 'Compare' | 'Collections'
+type AuthUser = { id: number; username: string; email: string }
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000'
 
 function App() {
+  const currentPath = window.location.pathname.replace(/\/$/, '')
+  if (currentPath === '/login') return <AuthPage mode="login" />
+  if (currentPath === '/signup') return <AuthPage mode="signup" />
+
   const [activeTab, setActiveTab] = useState<Tab>('Overview')
   const [username, setUsername] = useState('')
   const [searchMessage, setSearchMessage] = useState('')
@@ -104,6 +111,39 @@ function App() {
     'torvalds',
     'sindresorhus',
   ])
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    fetch(`${API_BASE_URL}/api/auth/me`, { credentials: 'include' })
+      .then(async (response) => {
+        if (!response.ok) return null
+        const data = (await response.json()) as { user?: AuthUser } & Partial<AuthUser>
+        return data.user ?? (data.id && data.username ? (data as AuthUser) : null)
+      })
+      .catch(() => null)
+      .then((user) => {
+        if (active) {
+          setAuthUser(user)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function signOut() {
+    try {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } finally {
+      setAuthUser(null)
+    }
+  }
 
   function searchDeveloper(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -235,9 +275,31 @@ function App() {
               >
                 <Bell size={17} />
               </button>
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-sm font-semibold text-violet-300">
-                AF
-              </div>
+              {authUser ? (
+                <div className="flex items-center gap-3">
+                  <div className="hidden text-right sm:block">
+                    <div className="max-w-36 truncate text-sm font-medium text-zinc-200">{authUser.username}</div>
+                    <button onClick={signOut} className="text-xs text-zinc-500 transition hover:text-violet-300">Sign out</button>
+                  </div>
+                  <div
+                    aria-label={`${authUser.username} profile picture`}
+                    title={authUser.username}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-sm font-semibold uppercase text-violet-300 ring-1 ring-violet-400/20"
+                  >
+                    {authUser.username.slice(0, 2)}
+                  </div>
+                  <button onClick={signOut} className="text-xs text-zinc-400 sm:hidden">Sign out</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <a href="/login" className="rounded-lg px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.06] hover:text-white">
+                    Log in
+                  </a>
+                  <a href="/signup" className="rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-400">
+                    Sign up
+                  </a>
+                </div>
+              )}
             </div>
           </header>
 
