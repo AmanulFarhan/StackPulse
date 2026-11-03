@@ -5,6 +5,9 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import pool from "./config/database.js";
 import authRoutes from "./routes/auth.js";
+import githubRoutes from "./routes/githubRoutes.js"
+import collectionsRoutes from "./routes/collectionsRoutes.js"
+import comparisonsRoutes from "./routes/comparisonsRoutes.js"
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
@@ -17,6 +20,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
+app.use("/api/github", githubRoutes);
+app.use("/api/collections", collectionsRoutes);
+app.use("/api/comparisons", comparisonsRoutes);
 
 app.get("/api/health-check", (_req, res) => {
     res.json({
